@@ -32,7 +32,7 @@ app = FastAPI()
 # CORSの設定を追加
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Next.jsのURLを許可
+    allow_origins=["http://localhost:3000", "https://tech0-gen8-step4-pos-app-115.azurewebsites.net"],  # Next.jsのURLを許可
     allow_credentials=True,
     allow_methods=["*"],  # すべてのHTTPメソッドを許可 (GET, POST, PUT, DELETEなど)
     allow_headers=["*"],  # すべてのヘッダーを許可
