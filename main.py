@@ -68,7 +68,7 @@ class TransactionDetail(Base):
 # Pydantic モデル定義
 class PurchaseItem(BaseModel):
     code: str
-    name: str
+    prd_name: str
     price: int
 
 class PurchaseRequest(BaseModel):
@@ -96,7 +96,7 @@ def get_product(code: str, db: Session = Depends(get_db)):
     product = db.query(Product).filter(Product.CODE == code).first()
     if not product:
         raise HTTPException(status_code=404, detail="商品が見つかりません")
-    return {"product_name": product.NAME, "product_price": product.PRICE}
+    return {"CODE": product.CODE, "NAME": product.NAME, "PRICE": product.PRICE}
 
 # 購入ボタンのAPI
 @app.post("/purchase")
@@ -106,7 +106,6 @@ def purchase_items(request: PurchaseRequest, db: Session = Depends(get_db)):
         
         # 新規取引の登録
         new_transaction = Transaction(
-            DATETIME=func.now(),
             EMP_CD=emp_cd,
             STORE_CD=request.store_cd,
             POS_NO=request.pos_no,
