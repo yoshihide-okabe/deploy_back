@@ -139,6 +139,8 @@ def purchase_items(request: PurchaseRequest, db: Session = Depends(get_db)):
             )
             db.add(new_detail)
             total_amount += product.PRICE
+            
+        db.commit()  # 取引明細をコミットする
 
         # 取引の合計金額を更新
         db.query(Transaction).filter(Transaction.TRD_ID == transaction_id).update({"TOTAL_AMT": total_amount})
