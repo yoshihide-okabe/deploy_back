@@ -58,7 +58,7 @@ class Transaction(Base):
 class TransactionDetail(Base):
     __tablename__ = "transaction_details_okabe"
 
-    DTL_ID = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    DTL_ID = Column(Integer, primary_key=True, index=True)
     TRD_ID = Column(Integer, ForeignKey("transactions_okabe.TRD_ID"), nullable=False)
     PRD_ID = Column(Integer, ForeignKey("m_product_okabe.PRD_ID"), nullable=False)
     PRD_CODE = Column(String(13), nullable=False)
@@ -83,7 +83,7 @@ def get_db():
     try:
         yield db
     finally:
-        pass  # もしくは `finally:` を削除
+        db.close()
 
 # ルートのエンドポイント
 @app.get("/")
@@ -116,31 +116,38 @@ def purchase_items(request: PurchaseRequest, db: Session = Depends(get_db)):
         db.refresh(new_transaction)
 
         transaction_id = new_transaction.TRD_ID
-        if not transaction_id:
-            raise HTTPException(status_code=500, detail="取引レコードの登録に失敗しました")
-
+        
         total_amount = 0
+
+        # 現在の最大 DTL_ID を取得（並行処理の競合を防ぐ）
+        max_dtl_id = db.query(func.coalesce(func.max(TransactionDetail.DTL_ID), 0)).scalar() or 0
+
+        new_details = []  # バルクインサートのためにリストを作成
+        
         for item in request.items:
             product = db.query(Product).filter(Product.CODE == item.code).first()
             if not product:
                 raise HTTPException(status_code=404, detail=f"商品コード {item.code} が見つかりません")
 
-            max_dtl_id = db.query(func.coalesce(func.max(TransactionDetail.DTL_ID), 0)).scalar() or 0
-            dtl_id = max_dtl_id + 1
+            # DTL_ID を手動で増やして設定
+            max_dtl_id += 1
 
             # 取引明細の登録
             new_detail = TransactionDetail(
-                DTL_ID=dtl_id,
+                DTL_ID=max_dtl_id,  # 取引ごとの連番
                 TRD_ID=transaction_id,
                 PRD_ID=product.PRD_ID,
                 PRD_CODE=product.CODE,
                 PRD_NAME=product.NAME,
                 PRD_PRICE=product.PRICE
             )
-            db.add(new_detail)
+            new_details.append(new_detail)  # 一括登録のためにリストに追加
             total_amount += product.PRICE
-            
-        db.commit()  # 取引明細をコミットする
+        
+        # `flush()` を使ってデータを即時反映
+        for detail in new_details:
+            db.add(detail)
+        db.flush()
 
         # 取引の合計金額を更新
         db.query(Transaction).filter(Transaction.TRD_ID == transaction_id).update({"TOTAL_AMT": total_amount})
@@ -149,8 +156,7 @@ def purchase_items(request: PurchaseRequest, db: Session = Depends(get_db)):
         return {"success": True, "total_amount": total_amount}
 
     except Exception as e:
-        if db.is_active:  # 例外発生時のみ rollback する
-            db.rollback()
+        db.rollback()
         raise HTTPException(status_code=500, detail=f"サーバーエラー: {str(e)}")
 
     finally:
