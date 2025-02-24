@@ -35,3 +35,6 @@ instance/
 # Git管理外の特定のファイル
 .DS_Store
 Thumbs.db
+
+# DigiCert証明書（追加）
+DigiCertGlobalRootCA.crt.pem
