@@ -16,8 +16,8 @@ DATABASE_URL = os.getenv("DATABASE_URL") # 環境変数から DATABASE_URL を�
 
 print(f"✅ DATABASE_URL: {DATABASE_URL}")  # デバッグ用
 
-# SQLAlchemy の設定
-engine = create_engine(f"{DATABASE_URL}?charset=utf8mb4", echo=True)
+# SQLAlchemyの設定（utf8mb4を設定しない）
+engine = create_engine(DATABASE_URL, echo=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
